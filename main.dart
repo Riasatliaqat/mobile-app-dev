@@ -1,381 +1,122 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'University App',
+      title: 'Flutter Demo',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        // This is the theme of your application.
+        //
+        // TRY THIS: Try running your application with "flutter run". You'll see
+        // the application has a purple toolbar. Then, without quitting the app,
+        // try changing the seedColor in the colorScheme below to Colors.green
+        // and then invoke "hot reload" (save your changes or press the "hot
+        // reload" button in a Flutter-supported IDE, or press "r" if you used
+        // the command line to start the app).
+        //
+        // Notice that the counter didn't reset back to zero; the application
+        // state is not lost during the reload. To reset the state, use hot
+        // restart instead.
+        //
+        // This works for code too, not just values: Most code changes can be
+        // tested with just a hot reload.
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const HomeScreen(),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),
     );
   }
 }
 
-class FirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
 
-  Future<void> addSubject({
-    required String subjectName,
-    required String teacherName,
-    required String course,
-    required int creditHours,
-  }) async {
-    await _firestore.collection('subjects').add({
-      'subjectName': subjectName,
-      'teacherName': teacherName,
-      'course': course,
-      'creditHours': creditHours,
-      'createdAt': FieldValue.serverTimestamp(),
+  // This widget is the home page of your application. It is stateful, meaning
+  // that it has a State object (defined below) that contains fields that affect
+  // how it looks.
+
+  // This class is the configuration for the state. It holds the values (in this
+  // case the title) provided by the parent (in this case the App widget) and
+  // used by the build method of the State. Fields in a Widget subclass are
+  // always marked "final".
+
+  final String title;
+
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  int _counter = 0;
+
+  void _incrementCounter() {
+    setState(() {
+      // This call to setState tells the Flutter framework that something has
+      // changed in this State, which causes it to rerun the build method below
+      // so that the display can reflect the updated values. If we changed
+      // _counter without calling setState(), then the build method would not be
+      // called again, and so nothing would appear to happen.
+      _counter++;
     });
   }
 
-  Stream<QuerySnapshot> getSubjects() {
-    return _firestore.collection('subjects').orderBy('createdAt').snapshots();
-  }
-
-  Future<void> initializeSampleData() async {
-    final snapshot = await _firestore.collection('subjects').get();
-    if (snapshot.size == 0) {
-      await addSubject(
-        subjectName: 'Mathematics',
-        teacherName: 'Dr. Smith',
-        course: 'Calculus I',
-        creditHours: 3,
-      );
-      await addSubject(
-        subjectName: 'Computer Science',
-        teacherName: 'Prof. Johnson',
-        course: 'Data Structures',
-        creditHours: 4,
-      );
-      await addSubject(
-        subjectName: 'Physics',
-        teacherName: 'Dr. Brown',
-        course: 'Mechanics',
-        creditHours: 3,
-      );
-    }
-  }
-}
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final FirestoreService _firestoreService = FirestoreService();
-  int _currentIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _firestoreService.initializeSampleData();
-  }
-
   @override
   Widget build(BuildContext context) {
+    // This method is rerun every time setState is called, for instance as done
+    // by the _incrementCounter method above.
+    //
+    // The Flutter framework has been optimized to make rerunning build methods
+    // fast, so that you can just rebuild anything that needs updating rather
+    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        title: const Text('University App'),
-        centerTitle: true,
-        actions: [
-          if (_currentIndex == 0)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () => _showAddSubjectDialog(context),
-            ),
-        ],
+        // TRY THIS: Try changing the color here to a specific color (to
+        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
+        // change color while the other colors stay the same.
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        // Here we take the value from the MyHomePage object that was created by
+        // the App.build method, and use it to set our appbar title.
+        title: Text(widget.title),
       ),
-      drawer: const AppDrawer(),
-      body: _currentIndex == 0 ? const SubjectList() : const LocalStorageExample(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Subjects'),
-          BottomNavigationBarItem(icon: Icon(Icons.storage), label: 'Storage'),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showAddSubjectDialog(BuildContext context) async {
-    final formKey = GlobalKey<FormState>();
-    final subjectNameController = TextEditingController();
-    final teacherNameController = TextEditingController();
-    final courseController = TextEditingController();
-    final creditHoursController = TextEditingController();
-
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add New Subject'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: subjectNameController,
-                decoration: const InputDecoration(labelText: 'Subject Name'),
-                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
-              ),
-              TextFormField(
-                controller: teacherNameController,
-                decoration: const InputDecoration(labelText: 'Teacher Name'),
-                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
-              ),
-              TextFormField(
-                controller: courseController,
-                decoration: const InputDecoration(labelText: 'Course'),
-                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
-              ),
-              TextFormField(
-                controller: creditHoursController,
-                decoration: const InputDecoration(labelText: 'Credit Hours'),
-                keyboardType: TextInputType.number,
-                validator: (value) => value?.isEmpty ?? true ? 'Required' : null,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (formKey.currentState?.validate() ?? false) {
-                await _firestoreService.addSubject(
-                  subjectName: subjectNameController.text,
-                  teacherName: teacherNameController.text,
-                  course: courseController.text,
-                  creditHours: int.parse(creditHoursController.text),
-                );
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class AppDrawer extends StatelessWidget {
-  const AppDrawer({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Colors.blue),
-            child: Text(
-              'Menu',
-              style: TextStyle(color: Colors.white, fontSize: 24),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Home'),
-            onTap: () => Navigator.pop(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Settings'),
-            onTap: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class SubjectList extends StatelessWidget {
-  const SubjectList({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('subjects').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final subjects = snapshot.data?.docs ?? [];
-
-        return SingleChildScrollView(
-          child: Column(
-            children: [
-              Image.network(
-                'https://via.placeholder.com/400x200?text=University+App',
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: 200,
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: subjects.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    return _buildSubjectCard(
-                      subjectName: data['subjectName'] ?? '',
-                      teacherName: data['teacherName'] ?? '',
-                      course: data['course'] ?? '',
-                      creditHours: data['creditHours'] ?? 0,
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSubjectCard({
-    required String subjectName,
-    required String teacherName,
-    required String course,
-    required int creditHours,
-  }) {
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: Center(
+        // Center is a layout widget. It takes a single child and positions it
+        // in the middle of the parent.
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          // Column is also a layout widget. It takes a list of children and
+          // arranges them vertically. By default, it sizes itself to fit its
+          // children horizontally, and tries to be as tall as its parent.
+          //
+          // Column has various properties to control how it sizes itself and
+          // how it positions its children. Here we use mainAxisAlignment to
+          // center the children vertically; the main axis here is the vertical
+          // axis because Columns are vertical (the cross axis would be
+          // horizontal).
+          //
+          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
+          // action in the IDE, or press "p" in the console), to see the
+          // wireframe for each widget.
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            const Text('You have pushed the button this many times:'),
             Text(
-              subjectName,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              '$_counter',
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
-            const SizedBox(height: 8),
-            Text('Teacher: $teacherName'),
-            Text('Course: $course'),
-            Text('Credit Hours: $creditHours'),
           ],
         ),
       ),
-    );
-  }
-}
-
-class LocalStorageExample extends StatefulWidget {
-  const LocalStorageExample({super.key});
-
-  @override
-  State<LocalStorageExample> createState() => _LocalStorageExampleState();
-}
-
-class _LocalStorageExampleState extends State<LocalStorageExample> {
-  final TextEditingController _controller = TextEditingController();
-  List<String> _records = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _saveData(String text) async {
-    final prefs = await SharedPreferences.getInstance();
-    _records.add(text);
-    await prefs.setStringList('myData', _records);
-    setState(() {});
-  }
-
-  Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _records = prefs.getStringList('myData') ?? [];
-    });
-  }
-
-  Future<void> _deleteItem(int index) async {
-    final prefs = await SharedPreferences.getInstance();
-    _records.removeAt(index);
-    await prefs.setStringList('myData', _records);
-    setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          TextField(
-            controller: _controller,
-            decoration: const InputDecoration(
-              labelText: "Enter text",
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: () {
-              final text = _controller.text.trim();
-              if (text.isNotEmpty) {
-                _saveData(text);
-                _controller.clear();
-              }
-            },
-            child: const Text("Save"),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            "Saved Items (${_records.length})",
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          Expanded(
-            child: _records.isEmpty
-                ? const Center(child: Text("No saved items yet"))
-                : ListView.builder(
-              itemCount: _records.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(_records[index]),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete),
-                    onPressed: () => _deleteItem(index),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _incrementCounter,
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
+      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
